@@ -25,6 +25,13 @@ var (
 	TimeCacheDuration = 120 * time.Second
 )
 
+const (
+	/// maxMessageSize is the maximum size of outbound message.
+	maxMessageSize = 1 << 20 // 1MiB
+	// maxRPCSize is the maximum size of any RPC protobuf.
+	maxRPCSize = maxMessageSize + (64 * 1024) // a message + 64 KiB.
+)
+
 var log = logging.Logger("pubsub")
 
 // PubSub is the implementation of the pubsub system.
@@ -734,7 +741,12 @@ func (p *PubSub) GetTopics() []string {
 }
 
 // Publish publishes data to the given topic.
+//
+// The message data must be less than the maximum message size, 1MiB.
 func (p *PubSub) Publish(topic string, data []byte) error {
+	if len(data) > maxMessageSize {
+		return fmt.Errorf("message too large: %d > %d", len(data), maxMessageSize)
+	}
 	seqno := p.nextSeqno()
 	id := p.host.ID()
 	m := &pb.Message{

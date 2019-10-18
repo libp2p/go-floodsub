@@ -70,11 +70,20 @@ func (fs *FloodSubRouter) Publish(from peer.ID, msg *pb.Message) {
 			continue
 		}
 
+		if out.Size() > maxRPCSize {
+			log.Errorf(
+				"dropping RPC outbound message that's too large: %d > %d",
+				out.Size(),
+				maxRPCSize,
+			)
+			continue
+		}
+
 		select {
 		case mch <- out:
 		default:
-			log.Infof("dropping message to peer %s: queue full", pid)
 			// Drop it. The peer is too slow.
+			log.Infof("dropping message to peer %s: queue full", pid)
 		}
 	}
 }

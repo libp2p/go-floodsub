@@ -353,15 +353,25 @@ func (gs *GossipSubRouter) sendRPC(p peer.ID, out *RPC) {
 		return
 	}
 
-	select {
-	case mch <- out:
-	default:
-		log.Infof("dropping message to peer %s: queue full", p)
-		// push control messages that need to be retried
-		ctl := out.GetControl()
-		if ctl != nil {
-			gs.pushControl(p, ctl)
+	if out.Size() > maxRPCSize {
+		log.Errorf(
+			"dropping RPC outbound message that's too large: %d > %d",
+			out.Size(),
+			maxRPCSize,
+		)
+	} else {
+		select {
+		case mch <- out:
+			return
+		default:
 		}
+		log.Infof("dropping message to peer %s: queue full", p)
+	}
+
+	// push control messages that need to be retried
+	ctl = out.GetControl()
+	if ctl != nil {
+		gs.pushControl(p, ctl)
 	}
 }
 
