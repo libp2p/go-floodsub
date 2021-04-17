@@ -237,6 +237,10 @@ func getTagValue(mgr connmgri.ConnManager, p peer.ID, tag string) int {
 	return val
 }
 
+// staticcheck says this function is unused because the tests that use it are skipped.
+// TODO: remove the lint directive when tests are unskipped.
+
+//lint:ignore U1000 unused function
 func tagExists(mgr connmgri.ConnManager, p peer.ID, tag string) bool {
 	info := mgr.GetTagInfo(p)
 	if info == nil {

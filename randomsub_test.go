@@ -160,13 +160,11 @@ func TestRandomsubEnoughPeers(t *testing.T) {
 
 	connectSome(t, hosts, 12)
 
-	var subs []*Subscription
 	for _, ps := range psubs {
-		sub, err := ps.Subscribe("test")
+		_, err := ps.Subscribe("test")
 		if err != nil {
 			t.Fatal(err)
 		}
-		subs = append(subs, sub)
 	}
 
 	time.Sleep(time.Second)

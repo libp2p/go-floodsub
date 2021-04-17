@@ -844,7 +844,6 @@ func (gs *GossipSubRouter) pxConnect(peers []*pb.PeerInfo) {
 		case gs.connect <- ci:
 		default:
 			log.Debugf("ignoring peer connection attempt; too many pending connections")
-			break
 		}
 	}
 }
@@ -1240,7 +1239,6 @@ func (gs *GossipSubRouter) heartbeatTimer() {
 }
 
 func (gs *GossipSubRouter) heartbeat() {
-	defer log.EventBegin(gs.p.ctx, "heartbeat").Done()
 
 	gs.heartbeatTicks++
 

@@ -23,12 +23,10 @@ func TestBrokenPromises(t *testing.T) {
 	peerB := peer.ID("B")
 	peerC := peer.ID("C")
 
-	var msgs []*pb.Message
 	var mids []string
 	for i := 0; i < 100; i++ {
 		m := makeTestMessage(i)
 		m.From = []byte(peerA)
-		msgs = append(msgs, m)
 		mid := DefaultMsgIdFn(m)
 		mids = append(mids, mid)
 	}

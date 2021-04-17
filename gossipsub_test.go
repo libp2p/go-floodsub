@@ -1126,8 +1126,8 @@ func TestGossipsubDirectPeers(t *testing.T) {
 	h := getNetHosts(t, ctx, 3)
 	psubs := []*PubSub{
 		getGossipsub(ctx, h[0], WithDirectConnectTicks(2)),
-		getGossipsub(ctx, h[1], WithDirectPeers([]peer.AddrInfo{{h[2].ID(), h[2].Addrs()}}), WithDirectConnectTicks(2)),
-		getGossipsub(ctx, h[2], WithDirectPeers([]peer.AddrInfo{{h[1].ID(), h[1].Addrs()}}), WithDirectConnectTicks(2)),
+		getGossipsub(ctx, h[1], WithDirectPeers([]peer.AddrInfo{{ID: h[2].ID(), Addrs: h[2].Addrs()}}), WithDirectConnectTicks(2)),
+		getGossipsub(ctx, h[2], WithDirectPeers([]peer.AddrInfo{{ID: h[1].ID(), Addrs: h[1].Addrs()}}), WithDirectConnectTicks(2)),
 	}
 
 	connect(t, h[0], h[1])
@@ -1191,8 +1191,8 @@ func TestGossipsubDirectPeersFanout(t *testing.T) {
 	h := getNetHosts(t, ctx, 3)
 	psubs := []*PubSub{
 		getGossipsub(ctx, h[0]),
-		getGossipsub(ctx, h[1], WithDirectPeers([]peer.AddrInfo{{h[2].ID(), h[2].Addrs()}})),
-		getGossipsub(ctx, h[2], WithDirectPeers([]peer.AddrInfo{{h[1].ID(), h[1].Addrs()}})),
+		getGossipsub(ctx, h[1], WithDirectPeers([]peer.AddrInfo{{ID: h[2].ID(), Addrs: h[2].Addrs()}})),
+		getGossipsub(ctx, h[2], WithDirectPeers([]peer.AddrInfo{{ID: h[1].ID(), Addrs: h[1].Addrs()}})),
 	}
 
 	connect(t, h[0], h[1])
@@ -1313,13 +1313,11 @@ func TestGossipsubEnoughPeers(t *testing.T) {
 	hosts := getNetHosts(t, ctx, 20)
 	psubs := getGossipsubs(ctx, hosts)
 
-	var subs []*Subscription
 	for _, ps := range psubs {
-		sub, err := ps.Subscribe("test")
+		_, err := ps.Subscribe("test")
 		if err != nil {
 			t.Fatal(err)
 		}
-		subs = append(subs, sub)
 	}
 
 	// at this point we have no connections and no mesh, so EnoughPeers should return false
@@ -1673,11 +1671,10 @@ func TestGossipsubOpportunisticGrafting(t *testing.T) {
 	connectSome(t, hosts[:10], 5)
 
 	// sybil squatters for the remaining 40 hosts
-	squatters := make([]*sybilSquatter, 0, 40)
+
 	for _, h := range hosts[10:] {
 		squatter := &sybilSquatter{h: h}
 		h.SetStreamHandler(GossipSubID_v10, squatter.handleStream)
-		squatters = append(squatters, squatter)
 	}
 
 	// connect all squatters to every real host
@@ -1812,13 +1809,11 @@ func TestGossipsubPeerScoreInspect(t *testing.T) {
 
 	connect(t, hosts[0], hosts[1])
 
-	var subs []*Subscription
 	for _, ps := range psubs {
-		sub, err := ps.Subscribe("test")
+		_, err := ps.Subscribe("test")
 		if err != nil {
 			t.Fatal(err)
 		}
-		subs = append(subs, sub)
 	}
 
 	time.Sleep(time.Second)
@@ -1990,6 +1985,10 @@ func (iwe *iwantEverything) handleStream(s network.Stream) {
 	truth := true
 	topic := "test"
 	err = w.WriteMsg(&pb.RPC{Subscriptions: []*pb.RPC_SubOpts{{Subscribe: &truth, Topicid: &topic}}})
+	if err != nil {
+		s.Reset()
+		return
+	}
 
 	var rpc pb.RPC
 	for {
