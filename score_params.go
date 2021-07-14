@@ -74,6 +74,9 @@ type PeerScoreParams struct {
 	IPColocationFactorThreshold int
 	IPColocationFactorWhitelist []*net.IPNet
 
+	// IPv6SubnetColocation controls whether /64 IPv6 subnets should be considered colocated.
+	IPv6SubnetColocation bool
+
 	// P7: behavioural pattern penalties.
 	// This parameter has an associated counter which tracks misbehaviour as detected by the
 	// router. The router currently applies penalties for the following behaviors:

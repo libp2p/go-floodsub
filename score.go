@@ -1002,12 +1002,14 @@ func (ps *peerScore) getIPs(p peer.ID) []string {
 			ip4 := ip.String()
 			res = append(res, ip4)
 		} else {
-			// IPv6 address -- we add both the actual address and the /64 subnet
+			// IPv6 address -- we add both the actual address and (optionally) the /64 subnet
 			ip6 := ip.String()
 			res = append(res, ip6)
 
-			ip6mask := ip.Mask(net.CIDRMask(64, 128)).String()
-			res = append(res, ip6mask)
+			if ps.params.IPv6SubnetColocation {
+				ip6mask := ip.Mask(net.CIDRMask(64, 128)).String()
+				res = append(res, ip6mask)
+			}
 		}
 	}
 
