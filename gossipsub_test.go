@@ -6081,3 +6081,94 @@ func TestGossipsubDuplicatePublishDeliveredOnce(t *testing.T) {
 		}
 	})
 }
+
+func TestGossipsubLimitIWANT(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	hosts := getDefaultHosts(t, 3)
+	denseConnect(t, hosts)
+
+	psubs := make([]*PubSub, 3)
+
+	defaultParams := DefaultGossipSubParams()
+	defaultParams.MaxIWantsPerMessageIDPerHeartbeat = 1
+	// Delay the heartbeat so we don't reset our count of allowed IWANTS for the
+	// first part of the test.
+	defaultParams.HeartbeatInitialDelay = 4 * time.Second
+	defaultParams.HeartbeatInterval = time.Second
+
+	psubs[0] = getGossipsub(ctx, hosts[0], WithGossipSubParams(defaultParams))
+
+	var iwantsRecvd atomic.Int32
+
+	copy(psubs[1:], getGossipsubs(ctx, hosts[1:], WithRawTracer(&mockRawTracer{
+		onRecvRPC: func(rpc *RPC) {
+			if len(rpc.GetControl().GetIwant()) > 0 {
+				iwantsRecvd.Add(1)
+			}
+		},
+	})))
+
+	topicString := "foobar"
+	for _, ps := range psubs {
+		topic, err := ps.Join(topicString)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = topic.Subscribe()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	time.Sleep(2 * time.Second)
+
+	publishIWant := func() {
+		psubs[1].eval <- func() {
+			psubs[1].rt.(*GossipSubRouter).sendRPC(hosts[0].ID(), &RPC{
+				RPC: pb.RPC{
+					Control: &pb.ControlMessage{
+						Ihave: []*pb.ControlIHave{
+							{
+								TopicID:    &topicString,
+								MessageIDs: []string{"1"},
+							},
+						},
+					},
+				},
+			}, false)
+		}
+
+		psubs[2].eval <- func() {
+			psubs[2].rt.(*GossipSubRouter).sendRPC(hosts[0].ID(), &RPC{
+				RPC: pb.RPC{
+					Control: &pb.ControlMessage{
+						Ihave: []*pb.ControlIHave{
+							{
+								TopicID:    &topicString,
+								MessageIDs: []string{"1"},
+							},
+						},
+					},
+				},
+			}, false)
+		}
+	}
+
+	publishIWant()
+	time.Sleep(time.Second)
+
+	if iwantsRecvd.Swap(0) != 1 {
+		t.Fatal("Expected exactly 1 IWANT due to limits")
+	}
+
+	// Wait for heartbeat to reset limit
+	time.Sleep(2 * time.Second)
+
+	publishIWant()
+	time.Sleep(time.Second)
+
+	if iwantsRecvd.Swap(0) != 1 {
+		t.Fatal("Expected exactly 1 IWANT due to limits")
+	}
+}
