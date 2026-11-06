@@ -1388,9 +1388,10 @@ func (gs *GossipSubRouter) rpcs(msg *Message) iter.Seq2[peer.ID, *RPC] {
 			}
 
 			// gossipsub peers
-			gmap, ok := gs.mesh[topic]
-			if !ok {
-				// we are not in the mesh for topic, use fanout peers
+			gmap := gs.mesh[topic]
+			if len(gmap) == 0 {
+				// we are not in the mesh for topic or our mesh is empty
+				// use fanout peers for publishing
 				gmap = gs.getFanoutPeersForPublishing(topic)
 			}
 
